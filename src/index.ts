@@ -1037,7 +1037,20 @@ server.tool(
 	},
 );
 
-// ── Profile (new) ─────────────────────────────────────────────────────
+// Reveal Monitor Signature
+server.tool(
+	'reveal_monitor_signature',
+	'Reveal the webhook signature secret for a monitor (for verifying webhook deliveries)',
+	{
+		monitor_id: z.string().describe('Monitor UUID'),
+	},
+	async (params) => {
+		const result = await pubrioRequest(getApiKey(), 'POST', '/monitors/signature/reveal', { monitor_id: params.monitor_id });
+		return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+	},
+);
+
+// ── Profile ───────────────────────────────────────────────────────────
 
 // Get Profile
 server.tool(

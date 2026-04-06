@@ -39,7 +39,7 @@ claude mcp add pubrio pubrio-mcp-server -e PUBRIO_API_KEY=your-api-key-here
 
 Any MCP-compatible client can use this server. Set the command to `pubrio-mcp-server` and pass `PUBRIO_API_KEY` as an environment variable.
 
-## Available Tools (49)
+## Available Tools (50)
 
 ### Company Tools (6)
 
@@ -95,7 +95,7 @@ Any MCP-compatible client can use this server. Set the command to `pubrio-mcp-se
 | `search_vertical_categories` | Search for vertical category names by keyword |
 | `search_vertical_sub_categories` | Search for vertical sub-category names by keyword |
 
-### Monitor Tools (12)
+### Monitor Tools (13)
 
 | Tool | Description |
 |------|-------------|
@@ -111,6 +111,7 @@ Any MCP-compatible client can use this server. Set the command to `pubrio-mcp-se
 | `get_monitor_stats` | Get aggregate statistics across all monitors |
 | `get_monitor_chart` | Get daily trigger statistics for a monitor over a date range |
 | `get_monitor_logs` | Get trigger logs for a specific monitor |
+| `reveal_monitor_signature` | Reveal the webhook signature secret for a monitor |
 
 ### Profile / Utility Tools (3)
 
