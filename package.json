@@ -1,0 +1,45 @@
+{
+	"name": "pubrio-mcp-server",
+	"version": "1.0.0",
+	"description": "MCP server for Pubrio — the glocalized business data layer for AI agents. Search companies, people, enrich records, and reveal contacts.",
+	"license": "MIT",
+	"author": {
+		"name": "Pubrio",
+		"email": "support@pubrio.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/pubrio/pubrio-mcp-server.git"
+	},
+	"keywords": [
+		"mcp",
+		"model-context-protocol",
+		"pubrio",
+		"b2b",
+		"data-intelligence",
+		"claude",
+		"ai-tools"
+	],
+	"bin": {
+		"pubrio-mcp-server": "./dist/index.js"
+	},
+	"main": "dist/index.js",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc",
+		"start": "node dist/index.js",
+		"prepublishOnly": "npm run build"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.0.0"
+	},
+	"devDependencies": {
+		"@types/node": "^25.5.2",
+		"typescript": "^5"
+	},
+	"engines": {
+		"node": ">=18"
+	}
+}
