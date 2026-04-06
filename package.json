@@ -1,6 +1,6 @@
 {
 	"name": "pubrio-mcp-server",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "MCP server for Pubrio — the glocalized business data layer for AI agents. Search companies, people, enrich records, and reveal contacts.",
 	"license": "MIT",
 	"author": {
