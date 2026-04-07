@@ -1,5 +1,7 @@
 # pubrio-mcp-server
 
+[![Glama MCP Server Score](https://glama.ai/mcp/servers/pubrio/pubrio-mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/pubrio/pubrio-mcp-server)
+
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server for [Pubrio](https://pubrio.com) — the glocalized business data layer for AI agents and revenue teams. Search the whole market — not just the 30% in mainstream datasets.
 
 Give your AI agents access to companies, people, jobs, news, ads, and intent signals from around the globe.
