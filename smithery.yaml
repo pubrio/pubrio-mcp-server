@@ -1,0 +1,19 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required:
+      - pubrio_api_key
+    properties:
+      pubrio_api_key:
+        type: string
+        title: Pubrio API Key
+        description: Your Pubrio API key from https://dashboard.pubrio.com
+  commandFunction: |-
+    (config) => ({
+      command: 'npx',
+      args: ['-y', 'pubrio-mcp-server'],
+      env: {
+        PUBRIO_API_KEY: config.pubrio_api_key
+      }
+    })
