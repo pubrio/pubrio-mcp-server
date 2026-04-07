@@ -28,6 +28,15 @@ async function pubrioRequest(
 
 	if (!response.ok) {
 		const text = await response.text();
+		if (response.status === 429) {
+			throw new Error(`Pubrio API rate limit exceeded (429). Please wait a moment and retry. Details: ${text}`);
+		}
+		if (response.status === 401) {
+			throw new Error(`Pubrio API authentication failed (401). Check that PUBRIO_API_KEY is valid. Details: ${text}`);
+		}
+		if (response.status === 402) {
+			throw new Error(`Pubrio API insufficient credits (402). Check your usage with get_usage. Details: ${text}`);
+		}
 		throw new Error(`Pubrio API error ${response.status}: ${text}`);
 	}
 
@@ -61,7 +70,7 @@ const server = new McpServer({
 // 1. Search Companies
 server.tool(
 	'search_companies',
-	'Search B2B companies by name, domain, location, industry, technology, or headcount',
+	'Search B2B companies by name, domain, location, industry, technology, or headcount. Tip: use get_locations, search_verticals, and search_technologies to find valid filter codes',
 	{
 		company_name: z.string().optional().describe('Company name to search for'),
 		domains: z.string().optional().describe('Comma-separated list of domains (e.g. "google.com,apple.com")'),
@@ -173,7 +182,7 @@ server.tool(
 // 3. Enrich Company
 server.tool(
 	'enrich_company',
-	'Enrich company data with full firmographic details (uses credits)',
+	'Enrich company data with full firmographic details including description, social links, and funding (uses credits). Provide one of: domain, linkedin_url, or domain_search_id',
 	{
 		domain: z.string().optional().describe('Company domain (e.g. "google.com")'),
 		linkedin_url: z.string().optional().describe('Company LinkedIn URL'),
@@ -192,7 +201,7 @@ server.tool(
 // 4. Search People
 server.tool(
 	'search_people',
-	'Search business professionals by name, title, department, seniority, or company',
+	'Search business professionals by name, title, department, seniority, or company. Tip: use get_departments, get_department_functions, and get_management_levels to find valid filter codes',
 	{
 		search_term: z.string().optional().describe('General search term'),
 		people_name: z.string().optional().describe('Person name to search'),
@@ -271,7 +280,7 @@ server.tool(
 // 6. Enrich Person
 server.tool(
 	'enrich_person',
-	'Enrich person data with full professional details (uses credits)',
+	'Enrich person with full professional details including work history and education (uses credits). Provide linkedin_url or people_search_id from a previous search',
 	{
 		linkedin_url: z.string().optional().describe('Person LinkedIn URL'),
 		people_search_id: z.string().optional().describe('Pubrio people search ID'),
@@ -288,7 +297,7 @@ server.tool(
 // 7. Reveal Contact
 server.tool(
 	'reveal_contact',
-	'Reveal email or phone number for a person (uses credits)',
+	'Reveal email (work or personal) or phone number for a person (uses 1 credit per contact type). Provide people_search_id from search_people or linkedin_url',
 	{
 		people_search_id: z.string().optional().describe('Pubrio people search ID'),
 		linkedin_url: z.string().optional().describe('Person LinkedIn URL'),
@@ -310,7 +319,7 @@ server.tool(
 // 8. Search Jobs
 server.tool(
 	'search_jobs',
-	'Search job postings across companies',
+	'Search job postings across companies by title, keyword, location, and date. Returns job_search_id for use with lookup_job',
 	{
 		search_term: z.string().optional().describe('Job search term'),
 		search_terms: z.string().optional().describe('Comma-separated job search terms'),
@@ -348,7 +357,7 @@ server.tool(
 // 9. Search News
 server.tool(
 	'search_news',
-	'Search company news and press releases',
+	'Search company news and press releases. Tip: use get_news_categories and get_news_galleries for valid filter values. Returns news_search_id for use with lookup_news',
 	{
 		search_term: z.string().optional().describe('News search term'),
 		search_terms: z.string().optional().describe('Comma-separated news search terms'),
@@ -390,7 +399,7 @@ server.tool(
 // 9b. Search Advertisements
 server.tool(
 	'search_ads',
-	'Search company advertisements and ad campaigns',
+	'Search company advertisements and ad campaigns by keyword, headline, target location, and date. Returns advertisement_search_id for use with lookup_advertisement',
 	{
 		search_terms: z.string().optional().describe('Comma-separated ad search terms'),
 		headlines: z.string().optional().describe('Comma-separated ad headlines'),
@@ -650,7 +659,7 @@ server.tool(
 // Batch Redeem Contacts
 server.tool(
 	'batch_redeem_contacts',
-	'Reveal contact details (email, phone) for multiple people at once (uses credits)',
+	'Reveal contact details (email, phone) for multiple people at once (uses 1 credit per person per contact type). Provide people_search_ids from search_people results',
 	{
 		peoples: z.string().describe('Comma-separated people_search_ids to redeem'),
 		people_contact_types: z
@@ -687,7 +696,7 @@ server.tool(
 // Get Locations
 server.tool(
 	'get_locations',
-	'Get the list of all available location codes for use as filter values in search queries',
+	'Reference data: get all available location codes for use as filter values in search queries (free, no credits)',
 	{},
 	async () => {
 		const result = await pubrioRequest(getApiKey(), 'GET', '/locations');
@@ -698,7 +707,7 @@ server.tool(
 // Get Departments
 server.tool(
 	'get_departments',
-	'Get the list of all department title codes for use as filter values in people searches',
+	'Reference data: get all department title codes for use as filter values in people searches (free, no credits)',
 	{},
 	async () => {
 		const result = await pubrioRequest(getApiKey(), 'GET', '/departments/title');
@@ -709,7 +718,7 @@ server.tool(
 // Get Department Functions
 server.tool(
 	'get_department_functions',
-	'Get the list of all department function codes for use as filter values in people searches',
+	'Reference data: get all department function codes for use as filter values in people searches (free, no credits)',
 	{},
 	async () => {
 		const result = await pubrioRequest(getApiKey(), 'GET', '/departments/function');
@@ -720,7 +729,7 @@ server.tool(
 // Get Management Levels
 server.tool(
 	'get_management_levels',
-	'Get the list of all management/seniority level codes for use as filter values in people searches',
+	'Reference data: get all management/seniority level codes for use as filter values in people searches (free, no credits)',
 	{},
 	async () => {
 		const result = await pubrioRequest(getApiKey(), 'GET', '/management_levels');
@@ -731,7 +740,7 @@ server.tool(
 // Get Company Sizes
 server.tool(
 	'get_company_sizes',
-	'Get the list of all company size range codes for use as filter values in searches',
+	'Reference data: get all company size range codes for use as filter values in searches (free, no credits)',
 	{},
 	async () => {
 		const result = await pubrioRequest(getApiKey(), 'GET', '/company_sizes');
@@ -742,7 +751,7 @@ server.tool(
 // Get Timezones
 server.tool(
 	'get_timezones',
-	'Get the list of all available timezone codes',
+	'Reference data: get all available timezone codes (free, no credits)',
 	{},
 	async () => {
 		const result = await pubrioRequest(getApiKey(), 'GET', '/timezones');
@@ -753,7 +762,7 @@ server.tool(
 // Get News Categories
 server.tool(
 	'get_news_categories',
-	'Get the list of all news category codes for use as filter values in news searches',
+	'Reference data: get all news category codes for use as filter values in news searches (free, no credits)',
 	{},
 	async () => {
 		const result = await pubrioRequest(getApiKey(), 'GET', '/companies/news/categories');
@@ -764,7 +773,7 @@ server.tool(
 // Get News Galleries
 server.tool(
 	'get_news_galleries',
-	'Get the list of all news gallery codes for use as filter values in news searches',
+	'Reference data: get all news gallery codes for use as filter values in news searches (free, no credits)',
 	{},
 	async () => {
 		const result = await pubrioRequest(getApiKey(), 'GET', '/companies/news/galleries');
@@ -775,7 +784,7 @@ server.tool(
 // Get News Languages
 server.tool(
 	'get_news_languages',
-	'Get the list of all news language codes for use as filter values in news searches',
+	'Reference data: get all news language codes for use as filter values in news searches (free, no credits)',
 	{},
 	async () => {
 		const result = await pubrioRequest(getApiKey(), 'GET', '/companies/news/languages');
@@ -786,7 +795,7 @@ server.tool(
 // Search Technologies
 server.tool(
 	'search_technologies',
-	'Search for technology names by keyword to find valid technology filter values',
+	'Reference data: search for technology names by keyword to find valid technology filter values (free, no credits)',
 	{
 		keyword: z.string().optional().describe('Keyword to search technologies'),
 	},
@@ -801,7 +810,7 @@ server.tool(
 // Search Technology Categories
 server.tool(
 	'search_technology_categories',
-	'Search for technology category names by keyword to find valid technology category filter values',
+	'Reference data: search for technology category names by keyword to find valid technology category filter values (free, no credits)',
 	{
 		keyword: z.string().optional().describe('Keyword to search technology categories'),
 	},
@@ -816,7 +825,7 @@ server.tool(
 // Search Verticals
 server.tool(
 	'search_verticals',
-	'Search for industry vertical names by keyword to find valid vertical filter values',
+	'Reference data: search for industry vertical names by keyword to find valid vertical filter values (free, no credits)',
 	{
 		keyword: z.string().optional().describe('Keyword to search verticals'),
 	},
@@ -831,7 +840,7 @@ server.tool(
 // Search Vertical Categories
 server.tool(
 	'search_vertical_categories',
-	'Search for vertical category names by keyword to find valid vertical category filter values',
+	'Reference data: search for vertical category names by keyword to find valid vertical category filter values (free, no credits)',
 	{
 		keyword: z.string().optional().describe('Keyword to search vertical categories'),
 	},
@@ -846,7 +855,7 @@ server.tool(
 // Search Vertical Sub-Categories
 server.tool(
 	'search_vertical_sub_categories',
-	'Search for vertical sub-category names by keyword to find valid vertical sub-category filter values',
+	'Reference data: search for vertical sub-category names by keyword to find valid vertical sub-category filter values (free, no credits)',
 	{
 		keyword: z.string().optional().describe('Keyword to search vertical sub-categories'),
 	},
@@ -1113,6 +1122,19 @@ server.tool(
 		if (params.page != null) body.page = params.page;
 		if (params.per_page != null) body.per_page = params.per_page;
 		const result = await pubrioRequest(getApiKey(), 'POST', '/monitors/statistics/logs', body);
+		return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+	},
+);
+
+// Lookup Monitor Log
+server.tool(
+	'lookup_monitor_log',
+	'Look up detailed information about a specific monitor trigger log entry',
+	{
+		monitor_log_id: z.string().describe('Monitor log UUID to look up'),
+	},
+	async (params) => {
+		const result = await pubrioRequest(getApiKey(), 'POST', '/monitors/statistics/logs/lookup', { monitor_log_id: params.monitor_log_id });
 		return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
 	},
 );
