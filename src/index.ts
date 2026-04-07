@@ -60,6 +60,18 @@ function splitComma(value: string | undefined): string[] | undefined {
 		.filter(Boolean);
 }
 
+function toDateStr(value: string | undefined): string {
+	if (!value) return '';
+	return value.substring(0, 10);
+}
+
+function buildDateRange(from: string | undefined, to: string | undefined): string[] | undefined {
+	const f = toDateStr(from);
+	const t = toDateStr(to);
+	if (!f && !t) return undefined;
+	return [f || t, t || f];
+}
+
 const server = new McpServer({
 	name: 'pubrio',
 	version: '1.0.0',
@@ -81,10 +93,10 @@ server.tool(
 		exclude_places: z.string().optional().describe('Comma-separated place names to exclude'),
 		keywords: z.string().optional().describe('Comma-separated keywords'),
 		verticals: z.string().optional().describe('Comma-separated industry verticals'),
-		vertical_categories: z.string().optional().describe('Comma-separated vertical category IDs'),
-		vertical_sub_categories: z.string().optional().describe('Comma-separated vertical sub-category IDs'),
-		technologies: z.string().optional().describe('Comma-separated technologies'),
-		categories: z.string().optional().describe('Comma-separated technology category IDs'),
+		vertical_categories: z.string().optional().describe('Comma-separated vertical category IDs (use search_vertical_categories to find IDs)'),
+		vertical_sub_categories: z.string().optional().describe('Comma-separated vertical sub-category IDs (use search_vertical_sub_categories to find IDs)'),
+		technologies: z.string().optional().describe('Comma-separated technology names (e.g. "Salesforce, HubSpot")'),
+		categories: z.string().optional().describe('Comma-separated technology category IDs (use search_technology_categories to find IDs)'),
 		companies: z.string().optional().describe('Comma-separated company domain_search_id UUIDs'),
 		employees_min: z.number().optional().describe('Minimum number of employees'),
 		employees_max: z.number().optional().describe('Maximum number of employees'),
@@ -98,16 +110,20 @@ server.tool(
 		job_titles: z.string().optional().describe('Comma-separated job titles to filter by'),
 		job_locations: z.string().optional().describe('Comma-separated job location codes'),
 		job_exclude_locations: z.string().optional().describe('Comma-separated job locations to exclude'),
-		job_posted_dates: z.string().optional().describe('Comma-separated job posted dates (YYYY-MM-DD)'),
-		news_categories: z.string().optional().describe('Comma-separated news categories'),
-		news_published_dates: z.string().optional().describe('Comma-separated news published dates (YYYY-MM-DD)'),
+		job_posted_date_from: z.string().optional().describe('Job posted date range start (YYYY-MM-DD)'),
+		job_posted_date_to: z.string().optional().describe('Job posted date range end (YYYY-MM-DD)'),
+		news_categories: z.string().optional().describe('Comma-separated news category slugs (use get_news_categories to find values)'),
+		news_published_date_from: z.string().optional().describe('News published date range start (YYYY-MM-DD)'),
+		news_published_date_to: z.string().optional().describe('News published date range end (YYYY-MM-DD)'),
 		news_galleries: z.string().optional().describe('Comma-separated news gallery names'),
 		news_gallery_ids: z.string().optional().describe('Comma-separated news gallery IDs'),
 		advertisement_search_terms: z.string().optional().describe('Comma-separated advertisement search terms'),
 		advertisement_target_locations: z.string().optional().describe('Comma-separated ad target location codes'),
 		advertisement_exclude_target_locations: z.string().optional().describe('Comma-separated ad target locations to exclude'),
-		advertisement_start_dates: z.string().optional().describe('Comma-separated ad start dates (YYYY-MM-DD)'),
-		advertisement_end_dates: z.string().optional().describe('Comma-separated ad end dates (YYYY-MM-DD)'),
+		advertisement_start_date_from: z.string().optional().describe('Ad campaign start date range start (YYYY-MM-DD)'),
+		advertisement_start_date_to: z.string().optional().describe('Ad campaign start date range end (YYYY-MM-DD)'),
+		advertisement_end_date_from: z.string().optional().describe('Ad campaign end date range start (YYYY-MM-DD)'),
+		advertisement_end_date_to: z.string().optional().describe('Ad campaign end date range end (YYYY-MM-DD)'),
 		page: z.number().optional().describe('Page number (default 1)'),
 		per_page: z.number().optional().describe('Results per page (default 25, max 25)'),
 	},
@@ -145,16 +161,20 @@ server.tool(
 		if (params.job_titles) body.job_titles = splitComma(params.job_titles);
 		if (params.job_locations) body.job_locations = splitComma(params.job_locations);
 		if (params.job_exclude_locations) body.job_exclude_locations = splitComma(params.job_exclude_locations);
-		if (params.job_posted_dates) body.job_posted_dates = splitComma(params.job_posted_dates);
+		const jobDates = buildDateRange(params.job_posted_date_from, params.job_posted_date_to);
+		if (jobDates) body.job_posted_dates = jobDates;
 		if (params.news_categories) body.news_categories = splitComma(params.news_categories);
-		if (params.news_published_dates) body.news_published_dates = splitComma(params.news_published_dates);
+		const newsDates = buildDateRange(params.news_published_date_from, params.news_published_date_to);
+		if (newsDates) body.news_published_dates = newsDates;
 		if (params.news_galleries) body.news_galleries = splitComma(params.news_galleries);
 		if (params.news_gallery_ids) body.news_gallery_ids = splitComma(params.news_gallery_ids);
 		if (params.advertisement_search_terms) body.advertisement_search_terms = splitComma(params.advertisement_search_terms);
 		if (params.advertisement_target_locations) body.advertisement_target_locations = splitComma(params.advertisement_target_locations);
 		if (params.advertisement_exclude_target_locations) body.advertisement_exclude_target_locations = splitComma(params.advertisement_exclude_target_locations);
-		if (params.advertisement_start_dates) body.advertisement_start_dates = splitComma(params.advertisement_start_dates);
-		if (params.advertisement_end_dates) body.advertisement_end_dates = splitComma(params.advertisement_end_dates);
+		const adStartDates = buildDateRange(params.advertisement_start_date_from, params.advertisement_start_date_to);
+		if (adStartDates) body.advertisement_start_dates = adStartDates;
+		const adEndDates = buildDateRange(params.advertisement_end_date_from, params.advertisement_end_date_to);
+		if (adEndDates) body.advertisement_end_dates = adEndDates;
 		const result = await pubrioRequest(getApiKey(), 'POST', '/companies/search', body);
 		return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
 	},
@@ -207,10 +227,11 @@ server.tool(
 		people_name: z.string().optional().describe('Person name to search'),
 		people_titles: z.string().optional().describe('Comma-separated job titles'),
 		peoples: z.string().optional().describe('Comma-separated people identifiers'),
-		management_levels: z.string().optional().describe('Comma-separated seniority levels'),
-		departments: z.string().optional().describe('Comma-separated departments'),
-		department_functions: z.string().optional().describe('Comma-separated department functions'),
-		employees: z.string().optional().describe('Comma-separated employee range (e.g. "1,1000")'),
+		management_levels: z.string().optional().describe('Comma-separated seniority level slugs (use get_management_levels to find values)'),
+		departments: z.string().optional().describe('Comma-separated department slugs (use get_departments to find values)'),
+		department_functions: z.string().optional().describe('Comma-separated department function slugs (use get_department_functions to find values)'),
+		employees_min: z.number().optional().describe('Minimum number of employees at company'),
+		employees_max: z.number().optional().describe('Maximum number of employees at company'),
 		people_locations: z.string().optional().describe('Comma-separated people location codes'),
 		company_locations: z.string().optional().describe('Comma-separated company location codes'),
 		company_linkedin_urls: z.string().optional().describe('Comma-separated company LinkedIn URLs'),
@@ -232,7 +253,9 @@ server.tool(
 		if (params.management_levels) body.management_levels = splitComma(params.management_levels);
 		if (params.departments) body.departments = splitComma(params.departments);
 		if (params.department_functions) body.department_functions = splitComma(params.department_functions);
-		if (params.employees) body.employees = splitComma(params.employees)?.map(Number);
+		if (params.employees_min != null || params.employees_max != null) {
+			body.employees = [params.employees_min ?? 1, params.employees_max ?? 1000000];
+		}
 		if (params.people_locations) body.people_locations = splitComma(params.people_locations);
 		if (params.company_locations) body.company_locations = splitComma(params.company_locations);
 		if (params.company_linkedin_urls) body.company_linkedin_urls = splitComma(params.company_linkedin_urls);
@@ -324,7 +347,8 @@ server.tool(
 		search_term: z.string().optional().describe('Job search term'),
 		search_terms: z.string().optional().describe('Comma-separated job search terms'),
 		titles: z.string().optional().describe('Comma-separated job titles'),
-		posted_dates: z.string().optional().describe('Comma-separated posted date filters'),
+		posted_date_from: z.string().optional().describe('Posted date range start (YYYY-MM-DD)'),
+		posted_date_to: z.string().optional().describe('Posted date range end (YYYY-MM-DD)'),
 		locations: z.string().optional().describe('Comma-separated job locations'),
 		exclude_locations: z.string().optional().describe('Comma-separated locations to exclude'),
 		company_locations: z.string().optional().describe('Comma-separated company location codes'),
@@ -342,7 +366,8 @@ server.tool(
 		if (params.search_term) body.search_term = params.search_term;
 		if (params.search_terms) body.search_terms = splitComma(params.search_terms);
 		if (params.titles) body.titles = splitComma(params.titles);
-		if (params.posted_dates) body.posted_dates = splitComma(params.posted_dates);
+		const postedDates = buildDateRange(params.posted_date_from, params.posted_date_to);
+		if (postedDates) body.posted_dates = postedDates;
 		if (params.locations) body.locations = splitComma(params.locations);
 		if (params.exclude_locations) body.exclude_locations = splitComma(params.exclude_locations);
 		if (params.company_locations) body.company_locations = splitComma(params.company_locations);
@@ -361,8 +386,9 @@ server.tool(
 	{
 		search_term: z.string().optional().describe('News search term'),
 		search_terms: z.string().optional().describe('Comma-separated news search terms'),
-		categories: z.string().optional().describe('Comma-separated news categories'),
-		published_dates: z.string().optional().describe('Comma-separated published date filters'),
+		categories: z.string().optional().describe('Comma-separated news category slugs (use get_news_categories to find values)'),
+		published_date_from: z.string().optional().describe('Published date range start (YYYY-MM-DD)'),
+		published_date_to: z.string().optional().describe('Published date range end (YYYY-MM-DD)'),
 		locations: z.string().optional().describe('Comma-separated location codes'),
 		company_locations: z.string().optional().describe('Comma-separated company location codes'),
 		companies: z.string().optional().describe('Comma-separated company names'),
@@ -382,7 +408,8 @@ server.tool(
 		if (params.search_term) body.search_term = params.search_term;
 		if (params.search_terms) body.search_terms = splitComma(params.search_terms);
 		if (params.categories) body.categories = splitComma(params.categories);
-		if (params.published_dates) body.published_dates = splitComma(params.published_dates);
+		const pubDates = buildDateRange(params.published_date_from, params.published_date_to);
+		if (pubDates) body.published_dates = pubDates;
 		if (params.locations) body.locations = splitComma(params.locations);
 		if (params.company_locations) body.company_locations = splitComma(params.company_locations);
 		if (params.companies) body.companies = splitComma(params.companies);
@@ -405,8 +432,10 @@ server.tool(
 		headlines: z.string().optional().describe('Comma-separated ad headlines'),
 		target_locations: z.string().optional().describe('Comma-separated target location codes'),
 		exclude_target_locations: z.string().optional().describe('Comma-separated target locations to exclude'),
-		start_dates: z.string().optional().describe('Comma-separated start date filters'),
-		end_dates: z.string().optional().describe('Comma-separated end date filters'),
+		start_date_from: z.string().optional().describe('Campaign start date range start (YYYY-MM-DD)'),
+		start_date_to: z.string().optional().describe('Campaign start date range end (YYYY-MM-DD)'),
+		end_date_from: z.string().optional().describe('Campaign end date range start (YYYY-MM-DD)'),
+		end_date_to: z.string().optional().describe('Campaign end date range end (YYYY-MM-DD)'),
 		company_locations: z.string().optional().describe('Comma-separated company location codes'),
 		companies: z.string().optional().describe('Comma-separated company names'),
 		domains: z.string().optional().describe('Comma-separated company domains'),
@@ -424,8 +453,10 @@ server.tool(
 		if (params.headlines) body.headlines = splitComma(params.headlines);
 		if (params.target_locations) body.target_locations = splitComma(params.target_locations);
 		if (params.exclude_target_locations) body.exclude_target_locations = splitComma(params.exclude_target_locations);
-		if (params.start_dates) body.start_dates = splitComma(params.start_dates);
-		if (params.end_dates) body.end_dates = splitComma(params.end_dates);
+		const startDates = buildDateRange(params.start_date_from, params.start_date_to);
+		if (startDates) body.start_dates = startDates;
+		const endDates = buildDateRange(params.end_date_from, params.end_date_to);
+		if (endDates) body.end_dates = endDates;
 		if (params.company_locations) body.company_locations = splitComma(params.company_locations);
 		if (params.companies) body.companies = splitComma(params.companies);
 		if (params.domains) body.domains = splitComma(params.domains);
@@ -446,19 +477,24 @@ server.tool(
 		domain_search_id: z.string().optional().describe('Pubrio domain search ID'),
 		locations: z.string().optional().describe('Comma-separated location codes'),
 		exclude_locations: z.string().optional().describe('Comma-separated locations to exclude'),
-		technologies: z.string().optional().describe('Comma-separated technologies'),
-		categories: z.string().optional().describe('Comma-separated categories'),
-		verticals: z.string().optional().describe('Comma-separated industry verticals'),
-		vertical_categories: z.string().optional().describe('Comma-separated vertical categories'),
-		vertical_sub_categories: z.string().optional().describe('Comma-separated vertical sub-categories'),
-		employees: z.string().optional().describe('Comma-separated employee range (e.g. "1,1000")'),
-		founded_dates: z.string().optional().describe('Comma-separated founded date filters'),
-		revenues: z.string().optional().describe('Comma-separated revenue filters'),
+		technologies: z.string().optional().describe('Comma-separated technology names (e.g. "Salesforce, HubSpot")'),
+		categories: z.string().optional().describe('Comma-separated technology category IDs (use search_technology_categories to find IDs)'),
+		verticals: z.string().optional().describe('Comma-separated vertical names (e.g. "Technology, Healthcare")'),
+		vertical_categories: z.string().optional().describe('Comma-separated vertical category IDs (use search_vertical_categories to find IDs)'),
+		vertical_sub_categories: z.string().optional().describe('Comma-separated vertical sub-category IDs (use search_vertical_sub_categories to find IDs)'),
+		employees_min: z.number().optional().describe('Minimum number of employees'),
+		employees_max: z.number().optional().describe('Maximum number of employees'),
+		founded_year_start: z.number().optional().describe('Founded year range start'),
+		founded_year_end: z.number().optional().describe('Founded year range end'),
+		revenue_min: z.number().optional().describe('Minimum revenue'),
+		revenue_max: z.number().optional().describe('Maximum revenue'),
 		job_locations: z.string().optional().describe('Comma-separated job location codes'),
-		job_posted_dates: z.string().optional().describe('Comma-separated job posted date filters'),
+		job_posted_date_from: z.string().optional().describe('Job posted date range start (YYYY-MM-DD)'),
+		job_posted_date_to: z.string().optional().describe('Job posted date range end (YYYY-MM-DD)'),
 		job_titles: z.string().optional().describe('Comma-separated job titles'),
-		news_categories: z.string().optional().describe('Comma-separated news categories'),
-		news_published_dates: z.string().optional().describe('Comma-separated news published date filters'),
+		news_categories: z.string().optional().describe('Comma-separated news category slugs (use get_news_categories to find values)'),
+		news_published_date_from: z.string().optional().describe('News published date range start (YYYY-MM-DD)'),
+		news_published_date_to: z.string().optional().describe('News published date range end (YYYY-MM-DD)'),
 		is_enable_similarity_search: z.boolean().optional().describe('Enable similarity search'),
 		similarity_score: z.number().optional().describe('Similarity score threshold'),
 		page: z.number().optional().describe('Page number (default 1)'),
@@ -479,14 +515,22 @@ server.tool(
 		if (params.verticals) body.verticals = splitComma(params.verticals);
 		if (params.vertical_categories) body.vertical_categories = splitComma(params.vertical_categories);
 		if (params.vertical_sub_categories) body.vertical_sub_categories = splitComma(params.vertical_sub_categories);
-		if (params.employees) body.employees = splitComma(params.employees)?.map(Number);
-		if (params.founded_dates) body.founded_dates = splitComma(params.founded_dates);
-		if (params.revenues) body.revenues = splitComma(params.revenues);
+		if (params.employees_min != null || params.employees_max != null) {
+			body.employees = [params.employees_min ?? 1, params.employees_max ?? 1000000];
+		}
+		if (params.founded_year_start != null || params.founded_year_end != null) {
+			body.founded_dates = [params.founded_year_start ?? 1800, params.founded_year_end ?? new Date().getFullYear()];
+		}
+		if (params.revenue_min != null || params.revenue_max != null) {
+			body.revenues = [params.revenue_min ?? 0, params.revenue_max ?? 999999999999];
+		}
 		if (params.job_locations) body.job_locations = splitComma(params.job_locations);
-		if (params.job_posted_dates) body.job_posted_dates = splitComma(params.job_posted_dates);
+		const simJobDates = buildDateRange(params.job_posted_date_from, params.job_posted_date_to);
+		if (simJobDates) body.job_posted_dates = simJobDates;
 		if (params.job_titles) body.job_titles = splitComma(params.job_titles);
 		if (params.news_categories) body.news_categories = splitComma(params.news_categories);
-		if (params.news_published_dates) body.news_published_dates = splitComma(params.news_published_dates);
+		const simNewsDates = buildDateRange(params.news_published_date_from, params.news_published_date_to);
+		if (simNewsDates) body.news_published_dates = simNewsDates;
 		if (params.is_enable_similarity_search != null) body.is_enable_similarity_search = params.is_enable_similarity_search;
 		if (params.similarity_score != null) body.similarity_score = params.similarity_score;
 		const result = await pubrioRequest(getApiKey(), 'POST', '/companies/lookalikes/search', body);
