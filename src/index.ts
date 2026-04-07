@@ -65,12 +65,40 @@ server.tool(
 	{
 		company_name: z.string().optional().describe('Company name to search for'),
 		domains: z.string().optional().describe('Comma-separated list of domains (e.g. "google.com,apple.com")'),
+		linkedin_urls: z.string().optional().describe('Comma-separated LinkedIn company URLs'),
 		locations: z.string().optional().describe('Comma-separated location codes'),
+		exclude_locations: z.string().optional().describe('Comma-separated ISO country codes to exclude'),
+		places: z.string().optional().describe('Comma-separated place names'),
+		exclude_places: z.string().optional().describe('Comma-separated place names to exclude'),
 		keywords: z.string().optional().describe('Comma-separated keywords'),
 		verticals: z.string().optional().describe('Comma-separated industry verticals'),
+		vertical_categories: z.string().optional().describe('Comma-separated vertical category IDs'),
+		vertical_sub_categories: z.string().optional().describe('Comma-separated vertical sub-category IDs'),
 		technologies: z.string().optional().describe('Comma-separated technologies'),
+		categories: z.string().optional().describe('Comma-separated technology category IDs'),
+		companies: z.string().optional().describe('Comma-separated company domain_search_id UUIDs'),
 		employees_min: z.number().optional().describe('Minimum number of employees'),
 		employees_max: z.number().optional().describe('Maximum number of employees'),
+		revenue_min: z.number().optional().describe('Minimum revenue'),
+		revenue_max: z.number().optional().describe('Maximum revenue'),
+		founded_year_start: z.number().optional().describe('Founded year range start'),
+		founded_year_end: z.number().optional().describe('Founded year range end'),
+		is_enable_similarity_search: z.boolean().optional().describe('Enable similarity search'),
+		similarity_score: z.number().optional().describe('Similarity score threshold (0-1)'),
+		exclude_fields: z.string().optional().describe('Comma-separated fields to exclude from response'),
+		job_titles: z.string().optional().describe('Comma-separated job titles to filter by'),
+		job_locations: z.string().optional().describe('Comma-separated job location codes'),
+		job_exclude_locations: z.string().optional().describe('Comma-separated job locations to exclude'),
+		job_posted_dates: z.string().optional().describe('Comma-separated job posted dates (YYYY-MM-DD)'),
+		news_categories: z.string().optional().describe('Comma-separated news categories'),
+		news_published_dates: z.string().optional().describe('Comma-separated news published dates (YYYY-MM-DD)'),
+		news_galleries: z.string().optional().describe('Comma-separated news gallery names'),
+		news_gallery_ids: z.string().optional().describe('Comma-separated news gallery IDs'),
+		advertisement_search_terms: z.string().optional().describe('Comma-separated advertisement search terms'),
+		advertisement_target_locations: z.string().optional().describe('Comma-separated ad target location codes'),
+		advertisement_exclude_target_locations: z.string().optional().describe('Comma-separated ad target locations to exclude'),
+		advertisement_start_dates: z.string().optional().describe('Comma-separated ad start dates (YYYY-MM-DD)'),
+		advertisement_end_dates: z.string().optional().describe('Comma-separated ad end dates (YYYY-MM-DD)'),
 		page: z.number().optional().describe('Page number (default 1)'),
 		per_page: z.number().optional().describe('Results per page (default 25, max 25)'),
 	},
@@ -81,13 +109,43 @@ server.tool(
 		};
 		if (params.company_name) body.company_name = params.company_name;
 		if (params.domains) body.domains = splitComma(params.domains);
+		if (params.linkedin_urls) body.linkedin_urls = splitComma(params.linkedin_urls);
 		if (params.locations) body.locations = splitComma(params.locations);
+		if (params.exclude_locations) body.exclude_locations = splitComma(params.exclude_locations);
+		if (params.places) body.places = splitComma(params.places);
+		if (params.exclude_places) body.exclude_places = splitComma(params.exclude_places);
 		if (params.keywords) body.keywords = splitComma(params.keywords);
 		if (params.verticals) body.verticals = splitComma(params.verticals);
+		if (params.vertical_categories) body.vertical_categories = splitComma(params.vertical_categories);
+		if (params.vertical_sub_categories) body.vertical_sub_categories = splitComma(params.vertical_sub_categories);
 		if (params.technologies) body.technologies = splitComma(params.technologies);
+		if (params.categories) body.categories = splitComma(params.categories);
+		if (params.companies) body.companies = splitComma(params.companies);
 		if (params.employees_min != null || params.employees_max != null) {
 			body.employees = [params.employees_min ?? 1, params.employees_max ?? 1000000];
 		}
+		if (params.revenue_min != null || params.revenue_max != null) {
+			body.revenues = [params.revenue_min ?? 0, params.revenue_max ?? 999999999999];
+		}
+		if (params.founded_year_start != null || params.founded_year_end != null) {
+			body.founded_dates = [params.founded_year_start ?? 1800, params.founded_year_end ?? new Date().getFullYear()];
+		}
+		if (params.is_enable_similarity_search != null) body.is_enable_similarity_search = params.is_enable_similarity_search;
+		if (params.similarity_score != null) body.similarity_score = params.similarity_score;
+		if (params.exclude_fields) body.exclude_fields = splitComma(params.exclude_fields);
+		if (params.job_titles) body.job_titles = splitComma(params.job_titles);
+		if (params.job_locations) body.job_locations = splitComma(params.job_locations);
+		if (params.job_exclude_locations) body.job_exclude_locations = splitComma(params.job_exclude_locations);
+		if (params.job_posted_dates) body.job_posted_dates = splitComma(params.job_posted_dates);
+		if (params.news_categories) body.news_categories = splitComma(params.news_categories);
+		if (params.news_published_dates) body.news_published_dates = splitComma(params.news_published_dates);
+		if (params.news_galleries) body.news_galleries = splitComma(params.news_galleries);
+		if (params.news_gallery_ids) body.news_gallery_ids = splitComma(params.news_gallery_ids);
+		if (params.advertisement_search_terms) body.advertisement_search_terms = splitComma(params.advertisement_search_terms);
+		if (params.advertisement_target_locations) body.advertisement_target_locations = splitComma(params.advertisement_target_locations);
+		if (params.advertisement_exclude_target_locations) body.advertisement_exclude_target_locations = splitComma(params.advertisement_exclude_target_locations);
+		if (params.advertisement_start_dates) body.advertisement_start_dates = splitComma(params.advertisement_start_dates);
+		if (params.advertisement_end_dates) body.advertisement_end_dates = splitComma(params.advertisement_end_dates);
 		const result = await pubrioRequest(getApiKey(), 'POST', '/companies/search', body);
 		return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
 	},
@@ -830,6 +888,9 @@ server.tool(
 		companies: z.string().optional().describe('Comma-separated company UUIDs to monitor'),
 		domains: z.string().optional().describe('Comma-separated company domains to monitor'),
 		linkedin_urls: z.string().optional().describe('Comma-separated company LinkedIn URLs to monitor'),
+		company_filters: z.string().optional().describe('Advanced company filters as JSON string'),
+		signal_filters: z.array(z.record(z.string(), z.unknown())).optional().describe('Signal-specific filters array'),
+		people_enrichment_configs: z.array(z.record(z.string(), z.unknown())).optional().describe('People enrichment configuration array'),
 	},
 	async (params) => {
 		const body: Record<string, unknown> = {
@@ -854,6 +915,9 @@ server.tool(
 		if (params.companies) body.companies = splitComma(params.companies);
 		if (params.domains) body.domains = splitComma(params.domains);
 		if (params.linkedin_urls) body.linkedin_urls = splitComma(params.linkedin_urls);
+		if (params.company_filters) body.company_filters = JSON.parse(params.company_filters);
+		if (params.signal_filters) body.signal_filters = params.signal_filters;
+		if (params.people_enrichment_configs) body.people_enrichment_configs = params.people_enrichment_configs;
 		const result = await pubrioRequest(getApiKey(), 'POST', '/monitors/create', body);
 		return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
 	},
@@ -874,10 +938,18 @@ server.tool(
 		max_records_per_trigger: z.number().optional().describe('Maximum records per trigger'),
 		is_active: z.boolean().optional().describe('Whether the monitor is active'),
 		is_paused: z.boolean().optional().describe('Whether the monitor is paused'),
+		is_company_enrichment: z.boolean().optional().describe('Enable company enrichment on trigger'),
+		is_people_enrichment: z.boolean().optional().describe('Enable people enrichment on trigger'),
+		max_failure_trigger: z.number().optional().describe('Maximum failure triggers before pausing'),
+		max_retry_per_trigger: z.number().optional().describe('Maximum retries per trigger'),
+		retry_delay_second: z.number().optional().describe('Retry delay in seconds'),
 		notification_email: z.string().optional().describe('Email for failure notifications'),
 		companies: z.string().optional().describe('Comma-separated company UUIDs to monitor'),
 		domains: z.string().optional().describe('Comma-separated company domains to monitor'),
 		linkedin_urls: z.string().optional().describe('Comma-separated company LinkedIn URLs to monitor'),
+		company_filters: z.string().optional().describe('Advanced company filters as JSON string'),
+		signal_filters: z.array(z.record(z.string(), z.unknown())).optional().describe('Signal-specific filters array'),
+		people_enrichment_configs: z.array(z.record(z.string(), z.unknown())).optional().describe('People enrichment configuration array'),
 	},
 	async (params) => {
 		const body: Record<string, unknown> = {
@@ -892,10 +964,18 @@ server.tool(
 		if (params.max_records_per_trigger != null) body.max_records_per_trigger = params.max_records_per_trigger;
 		if (params.is_active != null) body.is_active = params.is_active;
 		if (params.is_paused != null) body.is_paused = params.is_paused;
+		if (params.is_company_enrichment != null) body.is_company_enrichment = params.is_company_enrichment;
+		if (params.is_people_enrichment != null) body.is_people_enrichment = params.is_people_enrichment;
+		if (params.max_failure_trigger != null) body.max_failure_trigger = params.max_failure_trigger;
+		if (params.max_retry_per_trigger != null) body.max_retry_per_trigger = params.max_retry_per_trigger;
+		if (params.retry_delay_second != null) body.retry_delay_second = params.retry_delay_second;
 		if (params.notification_email) body.notification_email = params.notification_email;
 		if (params.companies) body.companies = splitComma(params.companies);
 		if (params.domains) body.domains = splitComma(params.domains);
 		if (params.linkedin_urls) body.linkedin_urls = splitComma(params.linkedin_urls);
+		if (params.company_filters) body.company_filters = JSON.parse(params.company_filters);
+		if (params.signal_filters) body.signal_filters = params.signal_filters;
+		if (params.people_enrichment_configs) body.people_enrichment_configs = params.people_enrichment_configs;
 		const result = await pubrioRequest(getApiKey(), 'POST', '/monitors/update', body);
 		return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
 	},
